@@ -25,7 +25,7 @@ function RootLayoutNav() {
     if (!currentSegment) return;
 
     const inAuthGroup = currentSegment === 'login' || currentSegment === 'signup';
-    const inTabsGroup = currentSegment === '(tabs)';
+    // const inTabsGroup = currentSegment === '(tabs)';
 
     if (!user) {
       // Redirect to login if not authenticated and not already on auth pages

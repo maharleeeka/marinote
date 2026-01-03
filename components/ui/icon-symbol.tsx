@@ -21,6 +21,7 @@ const MAPPING = {
   'books.vertical.fill': 'library-books',
   'magnifyingglass': 'search',
   'person.fill': 'person',
+  'plus.circle.fill': 'add-circle',
 } as IconMapping;
 
 /**

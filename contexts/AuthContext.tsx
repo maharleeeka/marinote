@@ -29,7 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [request, response, promptAsync] = Google.useAuthRequest({
+  const [, response, promptAsync] = Google.useAuthRequest({
     iosClientId: GOOGLE_IOS_CLIENT_ID,
     webClientId: GOOGLE_WEB_CLIENT_ID,
     scopes: ['openid', 'profile', 'email'],
