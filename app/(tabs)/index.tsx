@@ -9,9 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 
 export default function HomeScreen() {
  
-
   const handleAddPress = () => {
-    // TODO: Implement add functionality
     Alert.alert('Add', 'Add button pressed');
   };
 

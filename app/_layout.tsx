@@ -19,21 +19,16 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (loading) return;
-
-    // Wait for segments to be available before making navigation decisions
     const currentSegment = segments[0];
     if (!currentSegment) return;
 
     const inAuthGroup = currentSegment === 'login' || currentSegment === 'signup';
-    // const inTabsGroup = currentSegment === '(tabs)';
 
     if (!user) {
-      // Redirect to login if not authenticated and not already on auth pages
       if (!inAuthGroup) {
         router.replace('/login');
       }
     } else {
-      // Redirect to home if authenticated and trying to access auth pages
       if (inAuthGroup) {
         router.replace('/(tabs)');
       }

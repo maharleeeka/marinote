@@ -25,7 +25,6 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(email, password);
-      // Navigation will happen automatically via auth state change
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to sign in');
     } finally {

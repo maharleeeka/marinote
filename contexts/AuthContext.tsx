@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { createUserWithEmailAndPassword, getReactNativePersistence, GoogleAuthProvider, initializeAuth, onAuthStateChanged, signInWithCredential, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
-import { doc, getFirestore, setDoc } from 'firebase/firestore';
+import { doc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 
@@ -32,8 +32,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const createUserDocument = async (user: User) => {
   try {
     const userRef = doc(db, 'users', user.uid);
+    const now = serverTimestamp();
     await setDoc(userRef, {
       email: user.email || '',
+      createdAt: now,
+      updatedAt: now,
     }, { merge: true });
 
   } catch (error) {
