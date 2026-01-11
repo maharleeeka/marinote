@@ -21,7 +21,7 @@ export function LibraryItemComponent({ item, onPress }: LibraryItemProps) {
       activeOpacity={0.7}
     >
       <Image
-        source={require('@/assets/images/default.png')}
+        source={item.storyImageUrl ? { uri: item.storyImageUrl } : require('@/assets/images/default.png')}
         style={styles.thumbnail}
         contentFit="cover"
       />

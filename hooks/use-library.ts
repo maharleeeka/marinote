@@ -10,6 +10,7 @@ export interface LibraryItem {
   title: string;
   description: string;
   readLink?: string;
+  storyImageUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -45,6 +46,7 @@ export function useLibrary() {
             title: data.title || '',
             description: data.description || '',
             readLink: data.readLink || '',
+            storyImageUrl: data.storyImageUrl || '',
             createdAt: createdAt?.toDate(),
             updatedAt: updatedAt?.toDate(),
           });
@@ -63,7 +65,7 @@ export function useLibrary() {
     return () => unsubscribe();
   }, [user]);
 
-  const addItem = async (title: string, description: string, readLink?: string) => {
+  const addItem = async (title: string, description: string, readLink?: string, storyImageUrl?: string) => {
     if (!user) {
       throw new Error('User must be logged in');
     }
@@ -75,6 +77,7 @@ export function useLibrary() {
         title,
         description,
         readLink: readLink || '',
+        storyImageUrl: storyImageUrl || '',
         createdAt: now,
         updatedAt: now,
       });
@@ -84,19 +87,25 @@ export function useLibrary() {
     }
   };
 
-  const updateItem = async (id: string, title: string, description: string, readLink?: string) => {
+  const updateItem = async (id: string, title: string, description: string, readLink?: string, storyImageUrl?: string) => {
     if (!user) {
       throw new Error('User must be logged in');
     }
 
     try {
       const itemRef = doc(db, 'users', user.uid, 'library', id);
-      await updateDoc(itemRef, {
+      const updateData: any = {
         title,
         description,
         readLink: readLink || '',
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      if (storyImageUrl !== undefined) {
+        updateData.storyImageUrl = storyImageUrl || '';
+      }
+
+      await updateDoc(itemRef, updateData);
     } catch (err: any) {
       console.error('Error updating library item:', err);
       throw new Error(err.message || 'Failed to update library item');

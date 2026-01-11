@@ -27,11 +27,11 @@ export default function TabThreeScreen() {
     setActionsModalVisible(true);
   };
 
-  const handleSave = async (title: string, description: string, readLink?: string) => {
+  const handleSave = async (title: string, description: string, readLink?: string, storyImageUrl?: string) => {
     if (selectedItem) {
-      await updateItem(selectedItem.id, title, description, readLink);
+      await updateItem(selectedItem.id, title, description, readLink, storyImageUrl);
     } else {
-      await addItem(title, description, readLink);
+      await addItem(title, description, readLink, storyImageUrl);
     }
     setSelectedItem(null);
   };

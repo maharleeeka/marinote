@@ -1,5 +1,9 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { LibraryItem } from '@/hooks/use-library';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { uploadImageToFirebase } from '@/utils/imageUpload';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
@@ -9,21 +13,27 @@ import { ThemedView } from './themed-view';
 interface AddLibraryItemModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (title: string, description: string, readLink?: string) => Promise<void>;
+  onSave: (title: string, description: string, readLink?: string, storyImageUrl?: string) => Promise<void>;
   item?: LibraryItem | null;
 }
 
 export function AddLibraryItemModal({ visible, onClose, onSave, item }: AddLibraryItemModalProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState(item?.title || '');
   const [description, setDescription] = useState(item?.description || '');
   const [readLink, setReadLink] = useState(item?.readLink || '');
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(item?.storyImageUrl || null);
+  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setTitle(item?.title || '');
       setDescription(item?.description || '');
       setReadLink(item?.readLink || '');
+      setSelectedImageUri(item?.storyImageUrl || null);
+      setLocalImageUri(null);
     }
   }, [item, visible]);
 
@@ -32,18 +42,71 @@ export function AddLibraryItemModal({ visible, onClose, onSave, item }: AddLibra
   const tintColor = useThemeColor({}, 'tint');
   const cardBackground = useThemeColor({}, 'cardBackground') || backgroundColor;
 
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant permission to access your photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setLocalImageUri(result.assets[0].uri);
+        setSelectedImageUri(null); // Clear existing URL if picking new image
+      }
+    } catch (error: any) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setLocalImageUri(null);
+    setSelectedImageUri(null);
+  };
+
   const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Title is required');
       return;
     }
 
+    if (!user) {
+      Alert.alert('Error', 'User must be logged in');
+      return;
+    }
+
     setLoading(true);
     try {
-      await onSave(title.trim(), description.trim(), readLink.trim() || undefined);
+      let imageUrl = selectedImageUri || undefined;
+
+      if (localImageUri) {
+        setUploadingImage(true);
+        try {
+          imageUrl = await uploadImageToFirebase(localImageUri, user.uid);
+        } catch (error: any) {
+          Alert.alert('Error', 'Failed to upload image. ' + (error.message || ''));
+          setUploadingImage(false);
+          setLoading(false);
+          return;
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
+      await onSave(title.trim(), description.trim(), readLink.trim() || undefined, imageUrl);
       setTitle('');
       setDescription('');
       setReadLink('');
+      setSelectedImageUri(null);
+      setLocalImageUri(null);
       onClose();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save item');
@@ -53,10 +116,12 @@ export function AddLibraryItemModal({ visible, onClose, onSave, item }: AddLibra
   };
 
   const handleClose = () => {
-    if (!loading) {
+    if (!loading && !uploadingImage) {
       setDescription(item?.description || '');
       setReadLink(item?.readLink || '');
       setTitle(item?.title || '');
+      setSelectedImageUri(item?.storyImageUrl || null);
+      setLocalImageUri(null);
       onClose();
     }
   };
@@ -118,6 +183,34 @@ export function AddLibraryItemModal({ visible, onClose, onSave, item }: AddLibra
             editable={!loading}
           />
 
+          <ThemedText style={[styles.label, { color: textColor, marginTop: 16 }]}>Story Image</ThemedText>
+          {(localImageUri || selectedImageUri) ? (
+            <ThemedView style={styles.imageContainer}>
+              <Image
+                source={{ uri: localImageUri || selectedImageUri || '' }}
+                style={styles.previewImage}
+                contentFit="cover"
+              />
+              <TouchableOpacity
+                style={[styles.removeImageButton, { backgroundColor: tintColor }]}
+                onPress={handleRemoveImage}
+                disabled={loading || uploadingImage}
+              >
+                <ThemedText style={styles.removeImageText}>Remove</ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+          ) : (
+            <TouchableOpacity
+              style={[styles.imagePickerButton, { borderColor: textColor + '40', backgroundColor: backgroundColor }]}
+              onPress={handlePickImage}
+              disabled={loading || uploadingImage}
+            >
+              <ThemedText style={[styles.imagePickerText, { color: textColor }]}>
+                {uploadingImage ? 'Uploading...' : 'Pick Image'}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+
           <ThemedView style={styles.labelRow}>
             <ThemedText style={[styles.label, { color: textColor }]}>Read Link</ThemedText>
             {(readLink.trim() || item?.readLink) && (
@@ -149,9 +242,9 @@ export function AddLibraryItemModal({ visible, onClose, onSave, item }: AddLibra
             <TouchableOpacity
               style={[styles.button, styles.saveButton, { backgroundColor: tintColor }]}
               onPress={handleSave}
-              disabled={loading}
+              disabled={loading || uploadingImage}
             >
-              {loading ? (
+              {(loading || uploadingImage) ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <ThemedText style={styles.saveButtonText}>Save</ThemedText>
@@ -240,6 +333,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  imagePickerButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  imagePickerText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  imageContainer: {
+    position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  previewImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  removeImageText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 
