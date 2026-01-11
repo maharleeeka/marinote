@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { createUserWithEmailAndPassword, getReactNativePersistence, GoogleAuthProvider, initializeAuth, onAuthStateChanged, signInWithCredential, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
+import { doc, getFirestore, setDoc } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 
@@ -11,6 +12,8 @@ WebBrowser.maybeCompleteAuthSession();
 const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage)
 });
+
+const db = getFirestore(app);
 
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
@@ -26,6 +29,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const createUserDocument = async (user: User) => {
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    await setDoc(userRef, {
+      email: user.email || '',
+    }, { merge: true });
+
+  } catch (error) {
+    console.error('Error creating user document:', error);
+    throw error;
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    // Set loading to true initially to prevent premature navigation
     setLoading(true);
     
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -52,9 +67,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { id_token } = response.params;
       if (id_token) {
         const credential = GoogleAuthProvider.credential(id_token);
-        signInWithCredential(auth, credential).catch((error) => {
-          console.error('Google sign-in error:', error);
-        });
+        signInWithCredential(auth, credential)
+          .then(async (userCredential) => {
+            await createUserDocument(userCredential.user);
+          })
+          .catch((error) => {
+            console.error('Google sign-in error:', error);
+          });
       }
     }
   }, [response]);
@@ -64,7 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    await createUserDocument(userCredential.user);
   };
 
   const signInWithGoogle = async () => {
