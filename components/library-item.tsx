@@ -40,11 +40,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     width: 110,
-    aspectRatio: 0.75,
+    aspectRatio: 0.5,
+    margin: 4,
   },
   thumbnail: {
     width: '100%',
-    aspectRatio: 0.8,
+    aspectRatio: 0.7,
   },
   content: {
     padding: 12,

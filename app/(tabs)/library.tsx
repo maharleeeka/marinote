@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, FlatList, StyleSheet } from 'react-native';
 
 import { AddLibraryItemModal } from '@/components/add-library-item-modal';
 import { Header } from '@/components/header';
 import { LibraryItemComponent } from '@/components/library-item';
 import { LibraryItemActionsModal } from '@/components/library-item-actions-modal';
 import { ThemedSafeAreaView } from '@/components/themed-safe-area-view';
-import { ThemedScrollView } from '@/components/themed-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { LibraryItem, useLibrary } from '@/hooks/use-library';
@@ -16,6 +15,12 @@ export default function TabThreeScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [actionsModalVisible, setActionsModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(null);
+
+  const screenWidth = Dimensions.get('window').width;
+  const itemWidth = 110;
+  const itemMargin = 8;
+  const containerPadding = 16;
+  const numColumns = Math.floor((screenWidth - containerPadding) / (itemWidth + itemMargin));
 
   const handleAddPress = () => {
     setSelectedItem(null);
@@ -69,28 +74,33 @@ export default function TabThreeScreen() {
       <ThemedSafeAreaView edges={['top']} style={styles.safeArea}>
         <Header title="Library" onAddPress={handleAddPress} />
       </ThemedSafeAreaView>
-      <ThemedScrollView contentContainerStyle={styles.scrollContent}>
-        {loading ? (
-          <ThemedView style={styles.centerContainer}>
-            <ActivityIndicator size="large" />
-          </ThemedView>
-        ) : items.length === 0 ? (
-          <ThemedView style={styles.centerContainer}>
-            <ThemedText style={styles.emptyText}>No items in your library yet</ThemedText>
-            <ThemedText style={styles.emptySubtext}>Tap the + button to add your first item</ThemedText>
-          </ThemedView>
-        ) : (
-          <ThemedView style={styles.gridItemsContainer}>
-              {items.map((item) => (
-                <LibraryItemComponent
-                  key={item.id}
-                  item={item}
-                  onPress={() => handleItemPress(item)}
-                />
-              ))}
-            </ThemedView>
-        )}
-      </ThemedScrollView>
+      {loading ? (
+        <ThemedView style={styles.centerContainer}>
+          <ActivityIndicator size="large" />
+        </ThemedView>
+      ) : items.length === 0 ? (
+        <ThemedView style={styles.centerContainer}>
+          <ThemedText style={styles.emptyText}>No items in your library yet</ThemedText>
+          <ThemedText style={styles.emptySubtext}>Tap the + button to add your first item</ThemedText>
+        </ThemedView>
+      ) : (
+        <FlatList
+          data={items}
+          renderItem={({item}) =>
+            <LibraryItemComponent
+              item={item}
+              onPress={() => handleItemPress(item)}
+            />
+          }
+          keyExtractor={item => item.id}
+          numColumns={numColumns}
+          contentContainerStyle={styles.scrollContent}
+          columnWrapperStyle={numColumns > 1 ? styles.row : undefined}
+          initialNumToRender={10}
+          showsVerticalScrollIndicator={false}
+          style={styles.list}
+        />
+      )}
       <LibraryItemActionsModal
         visible={actionsModalVisible}
         item={selectedItem}
@@ -120,17 +130,17 @@ const styles = StyleSheet.create({
   safeArea: {
     zIndex: 1,
   },
+  list: {
+    flex: 1,
+  },
   scrollContent: {
     paddingVertical: 8,
     paddingHorizontal: 8,
-    alignItems: 'center',
+    flexGrow: 1,
   },
-  gridItemsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  row: {
     justifyContent: 'center',
-    padding: 8,
+    paddingHorizontal: 4,
   },
   centerContainer: {
     flex: 1,

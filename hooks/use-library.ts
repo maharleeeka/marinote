@@ -30,7 +30,7 @@ export function useLibrary() {
 
     setLoading(true);
     const libraryRef = collection(db, 'users', user.uid, 'library');
-    const q = query(libraryRef, orderBy('title', 'asc'));
+    const q = query(libraryRef, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(
       q,
